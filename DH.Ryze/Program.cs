@@ -206,28 +206,17 @@ namespace DH.Ryze
             if (mobs.Count > 0)
             {
                 var mob = mobs[0];
-                var conditionUseW = useW && W.IsReady() && W.WillHit(mob.Position, BallManager.BallPosition);
-
-                if (conditionUseW)
+                if (useE && E.IsReady())
                 {
-                    W.Cast(Player.Position, true);
+                    E.CastOnUnit(mob, true);
                 }
                 if (useQ && Q.IsReady())
                 {
-                    Q.Cast(mob, true);
+                    Q.CastOnUnit(mob, true);
                 }
-                if (useE && E.IsReady() && !conditionUseW)
+                if (useW && W.IsReady() && (Player.Mana >= Q.Mana + W.Mana && !Q.IsReady()))
                 {
-                    var closestAlly = GameObjects.AllyHeroes
-                        .Where(h => h.IsValidTarget(E.Range, false))
-                        .MinOrDefault(h => h.Distance(mob));
-                    if (closestAlly != null)
-                    {
-                        E.CastOnUnit(closestAlly, true);
-                    } else
-                    {
-                        E.CastOnUnit(Player, true);
-                    }
+                    W.CastOnUnit(mob, true);
                 }
             }
         }
@@ -235,7 +224,8 @@ namespace DH.Ryze
         static void Combo()
         {
 
-            var target = TargetSelector.GetTarget(Q.Range + Q.Width);
+            var target = TargetSelector.GetTargets(E.Range).Where(h => Q.WillHit(h, Player.Position)).OrderBy(h => h.Health).FirstOrDefault();
+            
 
             if (target == null)
             {
@@ -245,119 +235,87 @@ namespace DH.Ryze
             var useQ = Config["Combo"].GetValue<MenuBool>("UseQCombo");
             var useW = Config["Combo"].GetValue<MenuBool>("UseWCombo");
             var useE = Config["Combo"].GetValue<MenuBool>("UseECombo");
-            var useR = Config["Combo"].GetValue<MenuBool>("UseRCombo");
 
-            var minRTargets = Config["Combo"].GetValue<MenuSlider>("UseRNCombo").Value;
-            var EnemiesInQR = Player.CountEnemyHeroesInRange((int)(Q.Range + R.Width));
-            if (useW && W.IsReady())
+
+            switch (Config["Combo"].GetValue<MenuList>("ComboPriority").SelectedValue)
             {
-                CastW(1);
-            }
-
-            if (EnemiesInQR <= 1)
-            {
-                if (useR && GetComboDamage(target) > target.Health && R.IsReady())
-                {
-                    CastR(minRTargets, true);
-                }
-
-                if (useQ && Q.IsReady())
-                {
-                    CastQ(target);
-                }
-
-                if (useE && E.IsReady())
-                {
-                    foreach (var ally in GameObjects.AllyHeroes.Where(h => h.IsValidTarget(E.Range, false)))
+                case "Q(Max Damage)": // q  - e - q - w - 
+                    if (Player.Mana >= Q.Mana * 3 + E.Mana + W.Mana)
                     {
-                        if (ally.Position.CountEnemyHeroesInRange(300) >= 1)
+                        if(useQ && Q.IsReady())
                         {
-                            E.CastOnUnit(ally, true);
+                            Q.CastOnUnit(target, true);
+                        }
+                        if(useE && E.IsReady() && !Q.IsReady())
+                        {
+                            E.CastOnUnit(target, true);
+                        }
+                        if(useW && W.IsReady() && !Q.IsReady())
+                        {
+                            W.CastOnUnit(target, true);
+                        }
+                    } else if(Player.Mana >= Q.Mana * 2 + E.Mana)
+                    {
+                        if (useQ && Q.IsReady())
+                        {
+                            Q.CastOnUnit(target, true);
+                        }
+                        if (useE && E.IsReady() && !Q.IsReady())
+                        {
+                            E.CastOnUnit(target, true);
                         }
 
-                        CastE(ally, 1);
-                    }
-                }
-            }
-            else
-            {
-                if (useR && R.IsReady())
-                {
-                    if (BallManager.BallPosition.CountEnemyHeroesInRange(800) > 1)
+                    } else if (Player.Mana >= Q.Mana + E.Mana)
                     {
-                        var rCheck = GetHits(R);
-                        var pk = 0;
-                        var k = 0;
-                        if (rCheck.Item1 >= 2)
+                        if (useE && E.IsReady())
                         {
-                            foreach (var hero in rCheck.Item2)
-                            {
-                                var comboDamage = GetComboDamage(hero);
-                                if ((hero.Health - comboDamage) < 0.4 * hero.MaxHealth || comboDamage >= 0.4 * hero.MaxHealth)
-                                {
-                                    pk++;
-                                }
-
-                                if ((hero.Health - comboDamage) < 0)
-                                {
-                                    k++;
-                                }
-                            }
-
-                            if (rCheck.Item1 >= BallManager.BallPosition.CountEnemyHeroesInRange(800) || pk >= 2 ||
-                                k >= 1)
-                            {
-                                if (rCheck.Item1 >= minRTargets)
-                                {
-                                    R.Cast(Player.Position, true);
-                                }
-                            }
+                            E.CastOnUnit(target, true);
                         }
-                    }
-
-                    else if (GetComboDamage(target) > target.Health)
-                    {
-                        CastR(minRTargets, true);
-                    }
-                }
-
-                if (useQ && Q.IsReady())
-                {
-                    var qLoc = GetBestQLocation(target);
-                    if (qLoc.Item1 > 1)
-                    {
-                        Q.Cast(qLoc.Item2, true);
-                    }
-                    else
-                    {
-                        CastQ(target);
-                    }
-                }
-
-                if (useE && E.IsReady())
-                {
-                    if (BallManager.BallPosition.CountEnemyHeroesInRange(800) <= 2)
-                    {
-                        CastE(Player, 1);
-                    }
-                    else
-                    {
-                        CastE(Player, 2);
-                    }
-
-                    foreach (var ally in GameObjects.AllyHeroes.Where(h => h.IsValidTarget(E.Range, false)))
-                    {
-                        if (ally.Position.CountEnemyHeroesInRange(300) >= 2)
+                        if (useQ && Q.IsReady())
                         {
-                            E.CastOnUnit(ally, true);
+                            Q.CastOnUnit(target, true);
                         }
+
+                    } else
+                    {
+                        Q.CastOnUnit(target, true);
+                        E.CastOnUnit(target, true);
                     }
-                }
+                    break;
+                case "W(Max stun)": // q - e - w - q
+                    if(Player.Mana >= Q.Mana * 2 + W.Mana + E.Mana || Player.Mana >= Q.Mana + W.Mana + E.Mana)
+                    {
+                        if (useW && W.IsReady() && target.HasBuff("ryzeebuff"))
+                        {
+                            W.CastOnUnit(target, true);
+                        }
+                        if (useQ && Q.IsReady() && (!target.HasBuff("ryzeebuff") || !W.IsReady()))
+                        {
+                            Q.CastOnUnit(target, true);
+                        }
+                        if (useE && E.IsReady() && !Q.IsReady())
+                        {
+                            E.CastOnUnit(target, true);
+                        }
+
+                    } else if (Player.Mana >=+ W.Mana + E.Mana)
+                    {
+                        if (useW && W.IsReady() && target.HasBuff("ryzeebuff"))
+                        {
+                            W.CastOnUnit(target, true);
+                        }
+                        if (useE && E.IsReady())
+                        {
+                            E.CastOnUnit(target, true);
+                        }
+
+                    } else
+                    {
+                        W.CastOnUnit(target, true);
+                    }
+                    break;
             }
-            if (!Q.IsReady() && !W.IsReady() && !R.IsReady() && E.IsReady() && Player.HealthPercent < 15 && EnemiesInQR > 0)
-            {
-                CastE(Player, 0);
-            }
+            
         }
 
         static void Harass()

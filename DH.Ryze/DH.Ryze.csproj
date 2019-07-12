@@ -44,9 +44,6 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="EnsoulSharp.SDK">
-      <HintPath>..\..\..\Downloads\EnsoulSharp.Dependencies-master\System\EnsoulSharp.SDK.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX">
       <HintPath>..\..\..\Downloads\EnsoulSharp.Dependencies-master\System\SharpDX.dll</HintPath>
     </Reference>
@@ -55,6 +52,9 @@
     </Reference>
     <Reference Include="EnsoulSharp.Wrapper">
       <HintPath>..\..\..\Downloads\EnsoulSharp.Dependencies-master\Core\9.13\EnsoulSharp.Wrapper.dll</HintPath>
+    </Reference>
+    <Reference Include="EnsoulSharp.SDK">
+      <HintPath>..\..\..\Downloads\EnsoulSharp.Dependencies-master 2\System\EnsoulSharp.SDK.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
